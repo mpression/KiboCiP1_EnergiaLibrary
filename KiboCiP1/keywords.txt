@@ -1,0 +1,8 @@
+KiboCiP1	KEYWORD3
+getOpt3001AmbientLight	KEYWORD2
+getTmp007IrTemperature	KEYWORD2
+getTmp007DieTemperature	KEYWORD2
+getHdc1000Temperature	KEYWORD2
+getHdc1000Humidity	KEYWORD2
+getLdc1612InductiveCh0	KEYWORD2
+getLdc1612InductiveCh1	KEYWORD2
