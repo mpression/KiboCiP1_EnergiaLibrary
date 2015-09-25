@@ -92,7 +92,7 @@ void loop()
   if (!client.connected()) {
     Serial.println("Disconnected. Reconnecting....");
 
-    if( !client.connect("energiaClient")) {
+    if( !client.connect(deviceId)) {
       Serial.println("Connection failed");
     } 
     else {
