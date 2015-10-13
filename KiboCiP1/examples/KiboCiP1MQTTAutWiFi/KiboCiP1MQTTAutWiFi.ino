@@ -19,11 +19,41 @@ WiFiClient wifiClient;
 PubSubClient client(broker, 1883, callback, wifiClient);
 
 char deviceId[] = "000000000000";
-char pubtopic[30] = "Macnica/Mpression/Kibo/";
+char pubtopic[30] = "Mpression/Kibo/";
+char subtopic[40] = "Mpression/Kibo/";
 
 KiboCiP1 kiboCip1;
 
-void callback(char* topic, byte* payload, unsigned int length) {
+uint8_t isLed = 0;
+uint8_t isSensor = 1;
+
+void callback(char* topic, byte* recmsg, unsigned int length) {
+  Serial.print("Received message for topic ");
+  Serial.print(topic);
+  Serial.print(" with length ");
+  Serial.println(length);
+  Serial.println("Message:");
+  Serial.write(recmsg, length);
+  Serial.println();
+
+  char data[30];
+  memcpy(data,recmsg,length);
+
+  if( !strcmp(data,"LED")) {
+    isLed = 1 - isLed;
+    if (isLed) {
+      // turn the LED on (HIGH is the voltage level)
+      digitalWrite(RED_LED, HIGH);
+    }
+    else{
+      // turn the LED off by making the voltage LOW
+      digitalWrite(RED_LED, LOW);
+    }
+  }
+
+  if( !strcmp(data,"SENSOR")) {
+    isSensor = 1 - isSensor;
+  }
 }
 
 void setup()
@@ -71,6 +101,12 @@ void setup()
   Serial.print("deviceId: ");
   Serial.println(deviceId);
 
+  // Use deviceId as subtopic
+  Serial.print("subtopic: ");
+  strcat(subtopic,deviceId);
+  strcat(subtopic,"/toggle");
+  Serial.println(subtopic);
+
   // Use deviceId as pubtopic
   Serial.print("pubtopic: ");
   strcat(pubtopic,deviceId);
@@ -86,7 +122,7 @@ void setup()
 
 void loop()
 { 
-  char payload[255];
+  char payload[128];
 
   // Reconnect if the connection was lost
   if (!client.connected()) {
@@ -97,27 +133,41 @@ void loop()
     } 
     else {
       Serial.println("Connection success");
+      if(client.subscribe(subtopic)) {
+        Serial.println("Subscription successfull");
+      }
     }
   }
 
-  // turn the LED on (HIGH is the voltage level)
-  digitalWrite(RED_LED, HIGH);
+  if (isSensor) {
 
-  // get sensor data
-  String json = buildJson();
-  json.toCharArray(payload,255);
+    // turn the LED on (HIGH is the voltage level)
+    digitalWrite(RED_LED, HIGH);
 
-  // Publish
-  if(client.publish(pubtopic,payload)) {
-    Serial.println("Publish success");
-  } 
-  else {
-    Serial.println("Publish failed");
+    // get sensor data
+    String json = buildJson();
+    json.toCharArray(payload,128);
+
+    Serial.print("pubtopic: ");
+    Serial.println(pubtopic);
+    Serial.print("payload: ");
+    Serial.println(payload);
+
+    // Publish
+    if(client.publish(pubtopic,payload)) {
+      Serial.println("Publish success");
+    } 
+    else {
+      Serial.println("Publish failed");
+    }
+
+    // turn the LED off by making the voltage LOW
+    digitalWrite(RED_LED, LOW);
+
   }
-
-  // turn the LED off by making the voltage LOW
-  digitalWrite(RED_LED, LOW);
-
+  // Check if any message were received
+  // on the topic we subsrcived to
+  client.poll();
   delay(1000);
 }
 
@@ -139,62 +189,62 @@ void printWifiStatus() {
 }
 
 String buildJson() {
-  char workstr[255];
+  char workstr[10];
   double sensortData;
 
   String json = "{";
 
   // ldc1612_inductive_ch0
   sensortData = kiboCip1.getLdc1612InductiveCh0();
-  Serial.print("\tldc1612_inductive_ch0\t: ");
+  Serial.print("\tLDC1612_inductive_ch0\t: ");
   Serial.println(sensortData);
   dtostrf(sensortData,1,3, workstr);
-  json += "\"ldc1612_inductive_ch0\":";
+  json += "\"inductive_0\":";
   json += workstr;
   json += ",";
 
   // ldc1612_inductive_ch1
   sensortData = kiboCip1.getLdc1612InductiveCh1();
-  Serial.print("\tldc1612_inductive_ch1\t: ");
+  Serial.print("\tLDC1612_inductive_ch1\t: ");
   Serial.println(sensortData);
   dtostrf(sensortData,1,3, workstr);
-  json += "\"ldc1612_inductive_ch1\":";
+  json += "\"inductive_1\":";
   json += workstr;
   json += ",";
 
   // hdc1000_temperature
   sensortData = kiboCip1.getHdc1000Temperature();
-  Serial.print("\thdc1000_temperature\t: ");
+  Serial.print("\tHDC1000_temperature\t: ");
   Serial.println(sensortData);
   dtostrf(sensortData,1,1, workstr);
-  json += "\"hdc1000_temperature\":";
+  json += "\"temp\":";
   json += workstr;
   json += ",";
 
   // hdc1000_humidity
   sensortData = kiboCip1.getHdc1000Humidity();
-  Serial.print("\thdc1000_humidity\t: ");
+  Serial.print("\tHDC1000_humidity\t: ");
   Serial.println(sensortData);
   dtostrf(sensortData,1,1, workstr);
-  json += "\"hdc1000_humidity\":";
+  json += "\"humidity\":";
   json += workstr;
   json += ",";
 
   // opt3000_ambientLight
   sensortData = kiboCip1.getOpt3001AmbientLight();
-  Serial.print("\topt3000_ambientLight\t: ");
+  Serial.print("\tOPT3001_ambientLight\t: ");
   Serial.println(sensortData);
   dtostrf(sensortData,1,1, workstr);
-  json += "\"opt3000_ambientLight\":";
+  json += "\"light\":";
   json += workstr;
   json += ",";
 
   // tmp007_irTemperature
   sensortData = kiboCip1.getTmp007IrTemperature();
-  Serial.print("\ttmp007_irTemperature\t: ");
+  Serial.print("\tTMP007_irTemperature\t: ");
   Serial.println(sensortData);
   dtostrf(sensortData,1,1, workstr);
-  json += "\"tmp007_irTemperature\":";
+  json += "\"irTemp\":";
   json += workstr;
   json += "}";
 
